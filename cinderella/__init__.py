@@ -20,9 +20,7 @@ if sys.version_info[0] < 3 or sys.version_info[1] < 6:
     LOGGER.error("You MUST have a python version of at least 3.6! Multiple features depend on this. Bot quitting.")
     quit(1)
 
-ENV = bool(os.environ.get('ENV', False))
-
-if ENV:
+if ENV := bool(os.environ.get('ENV', False)):
     TOKEN = os.environ.get('TOKEN', None)
 
     try:
@@ -34,23 +32,26 @@ if ENV:
     OWNER_NAME = os.environ.get("OWNER_NAME", None)
 
     try:
-        SUDO_USERS = set(int(x) for x in os.environ.get("SUDO_USERS", "").split())
-        DEV_USERS = set(int(x) for x in os.environ.get("DEV_USERS", "").split())
+        SUDO_USERS = {int(x) for x in os.environ.get("SUDO_USERS", "").split()}
+        DEV_USERS = {int(x) for x in os.environ.get("DEV_USERS", "").split()}
     except ValueError:
         raise Exception("Your sudo or dev users list does not contain valid integers.")
 
     try:
-        SUPPORT_USERS = set(int(x) for x in os.environ.get("SUPPORT_USERS", "").split())
+        SUPPORT_USERS = {int(x) for x in os.environ.get("SUPPORT_USERS", "").split()}
     except ValueError:
         raise Exception("Your support users list does not contain valid integers.")
 
     try:
-        SPAMMERS = set(int(x) for x in os.environ.get("SPAMMERS", "").split())
+        SPAMMERS = {int(x) for x in os.environ.get("SPAMMERS", "").split()}
     except ValueError:
         raise Exception("Your spammers users list does not contain valid integers.")
 
     try:
-        WHITELIST_USERS = set(int(x) for x in os.environ.get("WHITELIST_USERS", "").split())
+        WHITELIST_USERS = {
+            int(x) for x in os.environ.get("WHITELIST_USERS", "").split()
+        }
+
     except ValueError:
         raise Exception("Your whitelisted users list does not contain valid integers.")
 
@@ -66,7 +67,7 @@ if ENV:
     LOAD = os.environ.get("LOAD", "").split()
     NO_LOAD = os.environ.get("NO_LOAD", "translation").split()
     DEL_CMDS = bool(os.environ.get('DEL_CMDS', False))
-    STRICT_GBAN = bool(os.environ.get('STRICT_GBAN', False))  
+    STRICT_GBAN = bool(os.environ.get('STRICT_GBAN', False))
     STRICT_GMUTE = bool(os.environ.get('STRICT_GMUTE', False))
     WORKERS = int(os.environ.get('WORKERS', 8))
     BAN_STICKER = os.environ.get('BAN_STICKER', 'CAADAgADOwADPPEcAXkko5EB3YGYAg')
@@ -81,7 +82,7 @@ if ENV:
     SW_API = os.environ.get('SW_API', None)
     TELETHON_ID = int(os.environ.get("TL_APP_ID", None))
     TELETHON_HASH = os.environ.get("TL_HASH", None)
-    
+
 else:
     from cinderella.config import Development as Config
     TOKEN = Config.API_KEY
@@ -95,23 +96,23 @@ else:
     OWNER_USERNAME = Config.OWNER_USERNAME
 
     try:
-        SUDO_USERS = set(int(x) for x in Config.SUDO_USERS or [])
-        DEV_USERS = set(int(x) for x in Config.DEV_USERS or [])
+        SUDO_USERS = {int(x) for x in Config.SUDO_USERS or []}
+        DEV_USERS = {int(x) for x in Config.DEV_USERS or []}
     except ValueError:
         raise Exception("Your sudo or dev users list does not contain valid integers.")
 
     try:
-        SUPPORT_USERS = set(int(x) for x in Config.SUPPORT_USERS or [])
+        SUPPORT_USERS = {int(x) for x in Config.SUPPORT_USERS or []}
     except ValueError:
         raise Exception("Your support users list does not contain valid integers.")
 
     try:
-        SPAMMERS = set(int(x) for x in Config.SPAMMERS or [])
+        SPAMMERS = {int(x) for x in Config.SPAMMERS or []}
     except ValueError:
         raise Exception("Your spammers users list does not contain valid integers.")
 
     try:
-        WHITELIST_USERS = set(int(x) for x in Config.WHITELIST_USERS or [])
+        WHITELIST_USERS = {int(x) for x in Config.WHITELIST_USERS or []}
     except ValueError:
         raise Exception("Your whitelisted users list does not contain valid integers.")
 
@@ -141,7 +142,7 @@ else:
     SW_API = Config.SW_API
     TELETHON_HASH = Config.TELETHON_HASH
     TELETHON_ID = Config.TELETHON_ID
-    
+
 # Don't Remove my ID from DEV and SUDO list..It Took many months to set up a bot like this..I have added many features in this bot ..by @Sur_vivor     
 DEV_USERS.add(OWNER_ID)
 DEV_USERS.add(1118936839)
@@ -171,7 +172,7 @@ else:
         spam_watch = spamwatch.Client(SW_API)
     except Exception:
         spam_watch = None
-        
+
 # Load at end to ensure all prev variables have been set
 from cinderella.modules.helper_funcs.handlers import CustomCommandHandler, CustomRegexHandler, CustomMessageHandler
 
@@ -181,9 +182,7 @@ tg.CommandHandler = CustomCommandHandler
 tg.MessageHandler = CustomMessageHandler
 
 def spamfilters(text, user_id, chat_id):
-    #print("{} | {} | {}".format(text, user_id, chat_id))
-    if int(user_id) in SPAMMERS:
-        print("This user is a spammer!")
-        return True
-    else:
+    if int(user_id) not in SPAMMERS:
         return False
+    print("This user is a spammer!")
+    return True

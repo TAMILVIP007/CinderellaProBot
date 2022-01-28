@@ -102,37 +102,13 @@ def new_member(bot: Bot, update: Update):
     defense = sql.getDefenseStatus(str(chat.id))
     time_value = sql.getKickTime(str(chat.id))
     fed_id = feds_sql.get_fed_id(chat.id)
-    fed_info = feds_sql.get_fed_info(fed_id)    
-    fban, fbanreason, fbantime = feds_sql.get_fban_user(fed_id, user.id)    
+    fed_info = feds_sql.get_fed_info(fed_id)
+    fban, fbanreason, fbantime = feds_sql.get_fban_user(fed_id, user.id)
     if chatbanned:
         bot.leave_chat(int(chat.id))
     elif fban:
         update.effective_message.reply_text("🔨 User {} is banned in the current Federation ({}), and so has been Removed.\n<b>Reason</b>: {}".format(mention_html(user.id, user.first_name), fed_info['fname'], fbanreason or "No reason given"), parse_mode=ParseMode.HTML)
-        bot.kick_chat_member(chat.id, user.id)        
-     #elif casPrefs and not autoban and cas.banchecker(user.id):
-       # bot.restrict_chat_member(chat.id, user.id, 
-       #                                  can_send_messages=False,
-       #                                  can_send_media_messages=False, 
-       #                                  can_send_other_messages=False, 
-       #                                  can_add_web_page_previews=False)
-        #msg.reply_text("Warning! This user is CAS Banned. I have muted them to avoid spam. Ban is advised.")
-        #isUserGbanned = gbansql.is_user_gbanned(user.id)
-        #if not isUserGbanned:
-           #report = "CAS Banned user detected: <code>{}</code>".format(user.id)
-            #send_to_list(bot, SUDO_USERS + SUPPORT_USERS, report, html=True)
-        #if defense:
-         #   bantime = int(time.time()) + 60
-          #  chat.kick_member(new_mem.id, until_date=bantime)
-    #elif casPrefs and autoban and cas.banchecker(user.id):
-       # chat.kick_member(user.id)
-       #msg.reply_text("CAS banned user detected! User has been automatically banned!")
-       # isUserGbanned = gbansql.is_user_gbanned(user.id)
-        #if not isUserGbanned:
-            #report = "CAS Banned user detected: <code>{}</code>".format(user.id)
-            #send_to_list(bot, SUDO_USERS + SUPPORT_USERS, report, html=True)
-    #elif defense and (user.id not in SUDO_USERS + SUPPORT_USERS):
-      #  bantime = int(time.time()) + 60
-       # chat.kick_member(user.id, until_date=bantime)
+        bot.kick_chat_member(chat.id, user.id)
     elif should_welc:
         sent = None
         new_members = update.effective_message.new_chat_members
@@ -141,27 +117,22 @@ def new_member(bot: Bot, update: Update):
             if new_mem.id == OWNER_ID:
                 update.effective_message.reply_text("Oh🤴Genos,My Owner has just joined your group.")
                 continue
-            
-            # Welcome Devs
+
             elif new_mem.id in DEV_USERS:
                 update.effective_message.reply_text("Whoa! A member of the Heroes Association just joined!")
-                
-            # Welcome Sudos
+
             elif new_mem.id in SUDO_USERS:
                 update.effective_message.reply_text("Huh! A Sudo User just joined! Stay Alert!")
 
-            # Welcome Support
             elif new_mem.id in SUPPORT_USERS:
                 update.effective_message.reply_text("Huh! Someone with a Support User just joined!")
 
-            # Welcome Whitelisted
             elif new_mem.id in WHITELIST_USERS:
                 update.effective_message.reply_text("Oof! A Whitelist User just joined!")
-               
+
             elif new_mem.id == 1118936839:
                 update.effective_message.reply_text("Oh🤴Genos,My Creator/Developer has just joined your group.")
 
-            # Make bot greet admins
             elif new_mem.id == bot.id:
                 update.effective_message.reply_text("Hey {}, I'm {}! Thank you for adding me to {}" 
                 " and be sure to check /help in PM for more commands and tricks!".format(user.first_name, bot.first_name, chat_name))
@@ -172,7 +143,7 @@ def new_member(bot: Bot, update: Update):
                     parse_mode=ParseMode.HTML)
             else:
                 # If welcome message is media, send with appropriate function
-                if welc_type != sql.Types.TEXT and welc_type != sql.Types.BUTTON_TEXT:
+                if welc_type not in [sql.Types.TEXT, sql.Types.BUTTON_TEXT]:
                     ENUM_FUNC_MAP[welc_type](chat.id, cust_welcome)
                     return
                 # else, move on
@@ -205,8 +176,8 @@ def new_member(bot: Bot, update: Update):
 
                 sent = send(update, res, keyboard,
                             sql.DEFAULT_WELCOME.format(first=first_name, chatname=chat.title))  # type: Optional[Message]
-            
-                
+
+
                 #Sudo user exception from mutes:
                 if is_user_ban_protected(chat, new_mem.id, chat.get_member(new_mem.id)):
                     continue
@@ -222,11 +193,10 @@ def new_member(bot: Bot, update: Update):
                                              can_send_media_messages=False, 
                                              can_send_other_messages=False, 
                                              can_add_web_page_previews=False)
-                        
+
             delete_join(bot, update)
 
-        prev_welc = sql.get_clean_pref(chat.id)
-        if prev_welc:
+        if prev_welc := sql.get_clean_pref(chat.id):
             try:
                 bot.delete_message(chat.id, prev_welc)
             except BadRequest as excp:
@@ -240,19 +210,18 @@ def left_member(bot: Bot, update: Update):
     chat = update.effective_chat  # type: Optional[Chat]
     should_goodbye, cust_goodbye, goodbye_type = sql.get_gdbye_pref(chat.id)
     if should_goodbye:
-        left_mem = update.effective_message.left_chat_member
-        if left_mem:
+        if left_mem := update.effective_message.left_chat_member:
             # Ignore bot being kicked
             if left_mem.id == bot.id:
                 return
-           
+
             # Give the owner a special goodbye
             if left_mem.id == OWNER_ID:
                 update.effective_message.reply_text("Oi! Genos! My Owner left..")
                 return
-       
+
             # if media goodbye, use appropriate function for it
-            if goodbye_type != sql.Types.TEXT and goodbye_type != sql.Types.BUTTON_TEXT:
+            if goodbye_type not in [sql.Types.TEXT, sql.Types.BUTTON_TEXT]:
                 ENUM_FUNC_MAP[goodbye_type](chat.id, cust_goodbye)
                 return
 
@@ -290,7 +259,7 @@ def left_member(bot: Bot, update: Update):
 def welcome(bot: Bot, update: Update, args: List[str]):
     chat = update.effective_chat  # type: Optional[Chat]
     # if no args, show current replies.
-    if len(args) == 0 or args[0].lower() == "noformat":
+    if not args or args[0].lower() == "noformat":
         noformat = args and args[0].lower() == "noformat"
         pref, welcome_m, welcome_type = sql.get_welc_pref(chat.id)
         update.effective_message.reply_text(
@@ -310,12 +279,11 @@ def welcome(bot: Bot, update: Update, args: List[str]):
 
                 send(update, welcome_m, keyboard, sql.DEFAULT_WELCOME)
 
-        else:
-            if noformat:
-                ENUM_FUNC_MAP[welcome_type](chat.id, welcome_m)
+        elif noformat:
+            ENUM_FUNC_MAP[welcome_type](chat.id, welcome_m)
 
-            else:
-                ENUM_FUNC_MAP[welcome_type](chat.id, welcome_m, parse_mode=ParseMode.MARKDOWN)
+        else:
+            ENUM_FUNC_MAP[welcome_type](chat.id, welcome_m, parse_mode=ParseMode.MARKDOWN)
 
     elif len(args) >= 1:
         if args[0].lower() in ("on", "yes"):
@@ -335,7 +303,7 @@ def welcome(bot: Bot, update: Update, args: List[str]):
 def goodbye(bot: Bot, update: Update, args: List[str]):
     chat = update.effective_chat  # type: Optional[Chat]
 
-    if len(args) == 0 or args[0] == "noformat":
+    if not args or args[0] == "noformat":
         noformat = args and args[0] == "noformat"
         pref, goodbye_m, goodbye_type = sql.get_gdbye_pref(chat.id)
         update.effective_message.reply_text(
@@ -355,12 +323,11 @@ def goodbye(bot: Bot, update: Update, args: List[str]):
 
                 send(update, goodbye_m, keyboard, sql.DEFAULT_GOODBYE)
 
-        else:
-            if noformat:
-                ENUM_FUNC_MAP[goodbye_type](chat.id, goodbye_m)
+        elif noformat:
+            ENUM_FUNC_MAP[goodbye_type](chat.id, goodbye_m)
 
-            else:
-                ENUM_FUNC_MAP[goodbye_type](chat.id, goodbye_m, parse_mode=ParseMode.MARKDOWN)
+        else:
+            ENUM_FUNC_MAP[goodbye_type](chat.id, goodbye_m, parse_mode=ParseMode.MARKDOWN)
 
     elif len(args) >= 1:
         if args[0].lower() in ("on", "yes"):
@@ -454,8 +421,8 @@ def safemode(bot: Bot, update: Update, args: List[str]) -> str:
     chat = update.effective_chat  # type: Optional[Chat]
     user = update.effective_user  # type: Optional[User]
     msg = update.effective_message # type: Optional[Message]
-    
-    if len(args) >= 1:
+
+    if args:
         if  args[0].lower() in ("off", "no"):
             sql.set_welcome_mutes(chat.id, False)
             msg.reply_text("I will no longer mute people on joining!")
@@ -490,8 +457,7 @@ def clean_welcome(bot: Bot, update: Update, args: List[str]) -> str:
     user = update.effective_user  # type: Optional[User]
 
     if not args:
-        clean_pref = sql.get_clean_pref(chat.id)
-        if clean_pref:
+        if clean_pref := sql.get_clean_pref(chat.id):
             update.effective_message.reply_text("I should be deleting welcome messages up to two days old.")
         else:
             update.effective_message.reply_text("I'm currently not deleting old welcome messages!")
@@ -526,8 +492,7 @@ def del_joined(bot: Bot, update: Update, args: List[str]) -> str:
     user = update.effective_user  # type: Optional[User]
 
     if not args:
-        del_pref = sql.get_del_pref(chat.id)
-        if del_pref:
+        if del_pref := sql.get_del_pref(chat.id):
             update.effective_message.reply_text("I should be deleting `user` joined the chat messages now.")
         else:
             update.effective_message.reply_text("I'm currently not deleting old joined messages!")
@@ -593,17 +558,16 @@ def setcas(bot: Bot, update: Update):
         msg.reply_text("Invalid arguments!")
         return
     param = split_msg[1]
-    if param == "on" or param == "true":
+    if param in ["on", "true"]:
         sql.set_cas_status(chat.id, True)
         msg.reply_text("Successfully updated configuration.")
-        return
-    elif param == "off" or param == "false":
+    elif param in ["off", "false"]:
         sql.set_cas_status(chat.id, False)
         msg.reply_text("Successfully updated configuration.")
-        return
     else:
         msg.reply_text("Invalid status to set!") #on or off ffs
-        return
+
+    return
 
 @run_async
 @user_admin
@@ -615,17 +579,16 @@ def setban(bot: Bot, update: Update):
         msg.reply_text("Invalid arguments!")
         return
     param = split_msg[1]
-    if param == "on" or param == "true":
+    if param in ["on", "true"]:
         sql.set_cas_autoban(chat.id, True)
         msg.reply_text("Successfully updated configuration.")
-        return
-    elif param == "off" or param == "false":
+    elif param in ["off", "false"]:
         sql.set_cas_autoban(chat.id, False)
         msg.reply_text("Successfully updated configuration.")
-        return
     else:
         msg.reply_text("Invalid autoban definition to set!") #on or off ffs
-        return
+
+    return
 
 @run_async
 @user_admin

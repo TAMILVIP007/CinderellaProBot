@@ -79,33 +79,33 @@ def new_fed(bot: Bot, update: Update):
     if chat.type != "private":
         update.effective_message.reply_text("Please run this command in my PM only!")
         return
-    if not fedowner:
-        if not fednam == '':
-            fed_id = str(uuid.uuid4())
-            fed_name = fednam
-            LOGGER.info(fed_id)
-            #if user.id == int(OWNER_ID):
-              #  fed_id = fed_name
-
-            x = sql.new_fed(user.id, fed_name, fed_id)
-            if not x:
-                update.effective_message.reply_text("Failed to create federation!")
-                return
-
-            update.effective_message.reply_text("*You have successfully created a new federation!*"\
-                                            "\nName: `{}`"\
-                                            "\nID: `{}`"
-                                            "\n\nUse the command below to join the federation:"
-                                            "\n`/joinfed {}`".format(fed_name, fed_id, fed_id), parse_mode=ParseMode.MARKDOWN)
-            try:
-                bot.send_message(MESSAGE_DUMP,
-                "Federation <b>{}</b> has been created with ID: <pre>{}</pre>\nCreator : {}".format(fed_name, fed_id,mention_html(user.id, user.first_name)), parse_mode=ParseMode.HTML)
-            except:
-                LOGGER.warning("Cannot send a message to MESSAGE_DUMP")
-        else:
-            update.effective_message.reply_text("Please give a name for the federation.")
-    else:
+    if fedowner:
         update.effective_message.reply_text("Only one federation per person.")
+
+    elif fednam != '':
+        fed_id = str(uuid.uuid4())
+        fed_name = fednam
+        LOGGER.info(fed_id)
+        #if user.id == int(OWNER_ID):
+          #  fed_id = fed_name
+
+        x = sql.new_fed(user.id, fed_name, fed_id)
+        if not x:
+            update.effective_message.reply_text("Failed to create federation!")
+            return
+
+        update.effective_message.reply_text("*You have successfully created a new federation!*"\
+                                        "\nName: `{}`"\
+                                        "\nID: `{}`"
+                                        "\n\nUse the command below to join the federation:"
+                                        "\n`/joinfed {}`".format(fed_name, fed_id, fed_id), parse_mode=ParseMode.MARKDOWN)
+        try:
+            bot.send_message(MESSAGE_DUMP,
+            "Federation <b>{}</b> has been created with ID: <pre>{}</pre>\nCreator : {}".format(fed_name, fed_id,mention_html(user.id, user.first_name)), parse_mode=ParseMode.HTML)
+        except:
+            LOGGER.warning("Cannot send a message to MESSAGE_DUMP")
+    else:
+        update.effective_message.reply_text("Please give a name for the federation.")
 	
 @run_async
 def del_fed(bot: Bot, update: Update, args: List[str]):
@@ -167,76 +167,69 @@ def fed_chat(bot: Bot, update: Update, args: List[str]):
 
 @run_async
 def join_fed(bot: Bot, update: Update, args: List[str]):
-	chat = update.effective_chat  # type: Optional[Chat]
-	user = update.effective_user  # type: Optional[User]
+    chat = update.effective_chat  # type: Optional[Chat]
+    user = update.effective_user  # type: Optional[User]
 
-	if chat.type == 'private':
-		send_message(update.effective_message, "This command is specific to the group, not to the PM!")
-		return
+    if chat.type == 'private':
+    	send_message(update.effective_message, "This command is specific to the group, not to the PM!")
+    	return
 
-	message = update.effective_message
-	administrators = chat.get_administrators()
-	fed_id = sql.get_fed_id(chat.id)
-	
+    message = update.effective_message
+    administrators = chat.get_administrators()
+    fed_id = sql.get_fed_id(chat.id)
 
-	if user.id in SUDO_USERS:
-		pass
-	else:
-		for admin in administrators:
-			status = admin.status
-			if status == "creator":
-				if str(admin.user.id) == str(user.id):
-					pass
-				else:
-					update.effective_message.reply_text("Only group creators can use this command!")
-					return
-	if fed_id:
-		message.reply_text("You cannot join two federations from one chat")
-		return
 
-	if len(args) >= 1:
-		getfed = sql.search_fed_by_id(args[0])
-		if getfed == False:
-			message.reply_text("Please enter a valid federation ID")
-			return
+    if user.id not in SUDO_USERS:
+        for admin in administrators:
+            status = admin.status
+            if status == "creator" and str(admin.user.id) != str(user.id):
+                update.effective_message.reply_text("Only group creators can use this command!")
+                return
+    if fed_id:
+    	message.reply_text("You cannot join two federations from one chat")
+    	return
 
-		x = sql.chat_join_fed(args[0], chat.title, chat.id)
-		if not x:
-			message.reply_text("Failed to join federation!")
-			return
+    if args:
+        getfed = sql.search_fed_by_id(args[0])
+        if getfed == False:
+        	message.reply_text("Please enter a valid federation ID")
+        	return
 
-		get_fedlog = sql.get_fed_log(args[0])
-		if get_fedlog:
-			if eval(get_fedlog):
-				bot.send_message(get_fedlog, "Chat *{}* has joined the federation *{}*".format(chat.title, getfed['fname']), parse_mode="markdown")
+        x = sql.chat_join_fed(args[0], chat.title, chat.id)
+        if not x:
+        	message.reply_text("Failed to join federation!")
+        	return
 
-		message.reply_text("This Chat has joined the Federation: {}!".format(getfed['fname']))
+        if get_fedlog := sql.get_fed_log(args[0]):
+            if eval(get_fedlog):
+            	bot.send_message(get_fedlog, "Chat *{}* has joined the federation *{}*".format(chat.title, getfed['fname']), parse_mode="markdown")
+
+        message.reply_text("This Chat has joined the Federation: {}!".format(getfed['fname']))
 		
 
 def leave_fed(bot: Bot, update: Update, args: List[str]):
-	chat = update.effective_chat  # type: Optional[Chat]
-	user = update.effective_user  # type: Optional[User]
-	
-	if chat.type == 'private':
-		send_message(update.effective_message, "This command is specific to the group, not to the PM! ")
-		return
+    chat = update.effective_chat  # type: Optional[Chat]
+    user = update.effective_user  # type: Optional[User]
 
-	fed_id = sql.get_fed_id(chat.id)
-	fed_info = sql.get_fed_info(fed_id)
+    if chat.type == 'private':
+    	send_message(update.effective_message, "This command is specific to the group, not to the PM! ")
+    	return
 
-	# administrators = chat.get_administrators().status
-	getuser = bot.get_chat_member(chat.id, user.id).status
-	if getuser in 'creator' or user.id in SUDO_USERS:
-		if sql.chat_leave_fed(chat.id) == True:
-			get_fedlog = sql.get_fed_log(fed_id)
-			if get_fedlog:
-				if eval(get_fedlog):
-					bot.send_message(get_fedlog, "Chat *{}* has left the federation *{}*".format(chat.title, fed_info['fname']), parse_mode="markdown")
-			send_message(update.effective_message, "This chat has left the federation {}!".format(fed_info['fname']))
-		else:
-			update.effective_message.reply_text("How can you leave a federation that you never joined?!")
-	else:
-		update.effective_message.reply_text("Only group creators can use this command!")
+    fed_id = sql.get_fed_id(chat.id)
+    fed_info = sql.get_fed_info(fed_id)
+
+    # administrators = chat.get_administrators().status
+    getuser = bot.get_chat_member(chat.id, user.id).status
+    if getuser in 'creator' or user.id in SUDO_USERS:
+        if sql.chat_leave_fed(chat.id) == True:
+            if get_fedlog := sql.get_fed_log(fed_id):
+                if eval(get_fedlog):
+                	bot.send_message(get_fedlog, "Chat *{}* has left the federation *{}*".format(chat.title, fed_info['fname']), parse_mode="markdown")
+            send_message(update.effective_message, "This chat has left the federation {}!".format(fed_info['fname']))
+        else:
+            update.effective_message.reply_text("How can you leave a federation that you never joined?!")
+    else:
+        update.effective_message.reply_text("Only group creators can use this command!")
 
 
 @run_async
@@ -273,8 +266,7 @@ def user_join_fed(bot: Bot, update: Update, args: List[str]):
         if user_id == bot.id:
             update.effective_message.reply_text("Hah, you're really funny.")
             return
-        res = sql.user_join_fed(fed_id, user_id)
-        if res:
+        if res := sql.user_join_fed(fed_id, user_id):
             update.effective_message.reply_text("Successfully Promoted!")
         else:
             update.effective_message.reply_text("Failed to promote!")
